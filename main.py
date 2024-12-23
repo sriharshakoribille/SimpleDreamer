@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from dreamer.algorithms.dreamer import Dreamer
 from dreamer.algorithms.plan2explore import Plan2Explore
 from dreamer.utils.utils import load_config, get_base_directory
-from dreamer.envs.envs import make_dmc_env, make_atari_env, get_env_infos
+from dreamer.envs.envs import make_dmc_env, make_atari_env, get_env_infos, make_gymnasium_env
 
 
 def main(config_file):
@@ -36,6 +36,12 @@ def main(config_file):
             frame_skip=config.environment.frame_skip,
             pixel_norm=config.environment.pixel_norm,
         )
+    elif config.environment.benchmark == "gymnasium":
+        env = make_gymnasium_env(
+            task_name=config.environment.task_name,
+            width=config.environment.width,
+            height=config.environment.height,
+        )
     obs_shape, discrete_action_bool, action_size = get_env_infos(env)
 
     log_dir = (
@@ -47,7 +53,8 @@ def main(config_file):
     )
     writer = SummaryWriter(log_dir)
     device = config.operation.device
-
+    print("Config: ", config)
+    print("Initializing agent")
     if config.algorithm == "dreamer-v1":
         agent = Dreamer(
             obs_shape, discrete_action_bool, action_size, writer, device, config
@@ -56,6 +63,7 @@ def main(config_file):
         agent = Plan2Explore(
             obs_shape, discrete_action_bool, action_size, writer, device, config
         )
+    print("Training agent")
     agent.train(env)
 
 

@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 import numpy as np
 
 
@@ -44,7 +44,7 @@ class PixelNormalization(gym.Wrapper):
         return obs / 255.0 - 0.5
 
     def step(self, action):
-        obs, reward, done, info = self.env.step(action)
+        obs, reward, done, _, info = self.env.step(action)
         return self._pixel_normalization(obs), reward, done, info
 
     def reset(self):
