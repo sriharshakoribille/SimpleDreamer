@@ -71,6 +71,16 @@ class Dreamer:
         self.writer = writer
         self.num_total_episode = 0
 
+    def _log_gradients(self, model, prefix):
+        """Log gradient norms for model parameters"""
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                self.writer.add_scalar(
+                    f"gradients/{prefix}_{name}_norm",
+                    param.grad.norm().item(),
+                    self.num_total_episode
+                )
+
     def train(self, env):
         if len(self.buffer) < 1:
             self.environment_interaction(env, self.config.seed_episodes)
@@ -163,8 +173,23 @@ class Dreamer:
         if self.config.use_continue_flag:
             model_loss += continue_loss.mean()
 
+        # Log model losses before optimizer step
+        self.writer.add_scalar("model/kl_loss", kl_divergence_loss.item(), self.num_total_episode)
+        self.writer.add_scalar("model/reconstruction_loss", -reconstruction_observation_loss.mean().item(), self.num_total_episode)
+        self.writer.add_scalar("model/reward_loss", -reward_loss.mean().item(), self.num_total_episode)
+        self.writer.add_scalar("model/total_loss", model_loss.item(), self.num_total_episode)
+        if self.config.use_continue_flag:
+            self.writer.add_scalar("model/continue_loss", continue_loss.mean().item(), self.num_total_episode)
+
         self.model_optimizer.zero_grad()
         model_loss.backward()
+
+        # Log model gradients
+        self._log_gradients(self.encoder, "encoder")
+        self._log_gradients(self.decoder, "decoder") 
+        self._log_gradients(self.rssm, "rssm")
+        self._log_gradients(self.reward_predictor, "reward")
+
         nn.utils.clip_grad_norm_(
             self.model_params,
             self.config.clip_grad,
@@ -217,8 +242,17 @@ class Dreamer:
 
         actor_loss = -torch.mean(lambda_values)
 
+        # Log actor loss before optimizer step
+        self.writer.add_scalar("agent/actor_loss", actor_loss.item(), self.num_total_episode)
+        self.writer.add_scalar("agent/predicted_values", values.mean().item(), self.num_total_episode)
+        self.writer.add_scalar("agent/lambda_values", lambda_values.mean().item(), self.num_total_episode)
+
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
+
+        # Log actor gradients
+        self._log_gradients(self.actor, "actor")
+
         nn.utils.clip_grad_norm_(
             self.actor.parameters(),
             self.config.clip_grad,
@@ -232,8 +266,15 @@ class Dreamer:
         )
         value_loss = -torch.mean(value_dist.log_prob(lambda_values.detach()))
 
+        # Log critic loss before optimizer step
+        self.writer.add_scalar("agent/critic_loss", value_loss.item(), self.num_total_episode)
+
         self.critic_optimizer.zero_grad()
         value_loss.backward()
+
+        # Log critic gradients
+        self._log_gradients(self.critic, "critic")
+
         nn.utils.clip_grad_norm_(
             self.critic.parameters(),
             self.config.clip_grad,
@@ -288,7 +329,7 @@ class Dreamer:
                     if train:
                         self.num_total_episode += 1
                         self.writer.add_scalar(
-                            "training score", score, self.num_total_episode
+                            "training/score", score, self.num_total_episode
                         )
                     else:
                         score_lst = np.append(score_lst, score)
@@ -296,4 +337,4 @@ class Dreamer:
         if not train:
             evaluate_score = score_lst.mean()
             print("evaluate score : ", evaluate_score)
-            self.writer.add_scalar("test score", evaluate_score, self.num_total_episode)
+            self.writer.add_scalar("evaluation/score", evaluate_score, self.num_total_episode)

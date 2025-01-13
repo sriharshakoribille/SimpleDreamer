@@ -12,7 +12,7 @@ from dreamer.utils.utils import load_config, get_base_directory
 from dreamer.envs.envs import make_dmc_env, make_atari_env, get_env_infos, make_gymnasium_env
 
 
-def main(config_file):
+def main(config_file, custom_msg):
     config = load_config(config_file)
 
     if config.environment.benchmark == "atari":
@@ -46,10 +46,12 @@ def main(config_file):
 
     log_dir = (
         get_base_directory()
-        + "/runs/"
+        + "/runs_new/"
         + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         + "_"
         + config.operation.log_dir
+        + "_"
+        + custom_msg
     )
     writer = SummaryWriter(log_dir)
     device = config.operation.device
@@ -75,4 +77,11 @@ if __name__ == "__main__":
         default="dmc-walker-walk.yml",
         help="config file to run(default: dmc-walker-walk.yml)",
     )
-    main(parser.parse_args().config)
+    parser.add_argument(
+        "--custom_msg",
+        type=str,
+        default="",
+        help="custom message to append to log directory name(default: Vanilla Dreamer)",
+    )
+    args = parser.parse_args()
+    main(args.config, args.custom_msg)

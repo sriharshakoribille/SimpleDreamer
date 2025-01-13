@@ -17,7 +17,7 @@ environment :
     
 parameters :
     dreamer :
-        train_iterations : 1000
+        train_iterations : 150
         horizon_length : 15
         batch_size : 50
         batch_length : 50
