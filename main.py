@@ -10,10 +10,10 @@ from dreamer.algorithms.dreamer import Dreamer
 from dreamer.algorithms.plan2explore import Plan2Explore
 from dreamer.utils.utils import load_config, get_base_directory
 from dreamer.envs.envs import make_dmc_env, make_atari_env, get_env_infos, make_gymnasium_env
-
+import shutil
 
 def main(config_file, custom_msg):
-    config = load_config(config_file)
+    config, config_path = load_config(config_file)
 
     if config.environment.benchmark == "atari":
         env = make_atari_env(
@@ -53,7 +53,9 @@ def main(config_file, custom_msg):
         + "_"
         + custom_msg
     )
+
     writer = SummaryWriter(log_dir)
+    shutil.copyfile(config_path, log_dir+"/config.yml")
     device = config.operation.device
     print("Config: ", config)
     print("Initializing agent")

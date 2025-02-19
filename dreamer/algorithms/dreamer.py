@@ -206,6 +206,7 @@ class Dreamer:
         deterministic = deterministics.reshape(-1, self.config.deterministic_size)
 
         # continue_predictor reinit
+        # Unrolling. 
         for t in range(self.config.horizon_length):
             action = self.actor(state, deterministic)
             deterministic = self.rssm.recurrent_model(state, action, deterministic)

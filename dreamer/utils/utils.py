@@ -148,4 +148,4 @@ def load_config(config_path):
     config_path = find_file(config_path)
     with open(config_path) as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
-    return AttrDict(config)
+    return AttrDict(config), config_path
