@@ -204,10 +204,10 @@ class Dreamer:
         model_loss.backward()
 
         # Log model gradients
-        self._log_gradients(self.encoder, "encoder")
-        self._log_gradients(self.decoder, "decoder") 
-        self._log_gradients(self.rssm, "rssm")
-        self._log_gradients(self.reward_predictor, "reward")
+        # self._log_gradients(self.encoder, "encoder")
+        # self._log_gradients(self.decoder, "decoder") 
+        # self._log_gradients(self.rssm, "rssm")
+        # self._log_gradients(self.reward_predictor, "reward")
 
         nn.utils.clip_grad_norm_(
             self.model_params,
@@ -288,12 +288,17 @@ class Dreamer:
         self.writer.add_scalar("agent/actor_loss", actor_loss.item(), self.num_total_episode)
         self.writer.add_scalar("agent/predicted_values", values.mean().item(), self.num_total_episode)
         self.writer.add_scalar("agent/lambda_values", lambda_values.mean().item(), self.num_total_episode)
+        self.writer.add_scalar("agent/predicted_rewards", predicted_rewards.mean().item(), self.num_total_episode)
+        if self.config.use_continue_flag:
+            self.writer.add_scalar("agent/continue_values", continues.mean().item(), self.num_total_episode)
+        if self.use_classifier:
+            self.writer.add_scalar("agent/kl_rewards", kl_rewards.mean().item(), self.num_total_episode)
 
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
 
         # Log actor gradients
-        self._log_gradients(self.actor, "actor")
+        # self._log_gradients(self.actor, "actor")
 
         nn.utils.clip_grad_norm_(
             self.actor.parameters(),
@@ -315,7 +320,7 @@ class Dreamer:
         value_loss.backward()
 
         # Log critic gradients
-        self._log_gradients(self.critic, "critic")
+        # self._log_gradients(self.critic, "critic")
 
         nn.utils.clip_grad_norm_(
             self.critic.parameters(),
