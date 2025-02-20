@@ -33,6 +33,7 @@ parameters :
         
         use_continue_flag : False
         use_classifier : True
+        lambda_cost : 0.1
         actor_learning_rate : 0.00008
         critic_learning_rate : 0.00008
         model_learning_rate : 0.0006
