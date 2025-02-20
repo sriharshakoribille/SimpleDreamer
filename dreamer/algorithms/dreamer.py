@@ -157,6 +157,7 @@ class Dreamer:
         if self.use_classifier:
             classifier_loss = self._intrinsic_reward_loss(
                 z=posterior_info.posteriors[:, :-1].reshape(-1, self.config.stochastic_size).detach(),
+                h=posterior_info.deterministics[:, :-1].reshape(-1, self.config.deterministic_size).detach(),
                 action_batch=data.action[:,1:-1].reshape(-1, self.action_size).detach(),
                 z_next=posterior_info.posteriors[:, 1:].reshape(-1, self.config.stochastic_size).detach(),
                 z_next_prior=posterior_info.priors[:, 1:].reshape(-1, self.config.stochastic_size).detach(),
@@ -215,7 +216,7 @@ class Dreamer:
         )
         self.model_optimizer.step()
     
-    def _intrinsic_reward_loss(self, z, action_batch, z_next, z_next_prior):
+    def _intrinsic_reward_loss(self, z, h, action_batch, z_next, z_next_prior):
         ip_batch_shape = z.shape[0]
         false_batch_idx = np.random.choice(ip_batch_shape, ip_batch_shape//2, replace=False)
         z_next_target = z_next 
@@ -224,7 +225,7 @@ class Dreamer:
         labels = torch.ones(ip_batch_shape, dtype=torch.long, device=self.device)
         labels[false_batch_idx] = 0.0
 
-        logits = self.classifier(z, action_batch, z_next_target)
+        logits = self.classifier(z, h, action_batch, z_next_target)
         classifier_loss = nn.CrossEntropyLoss()(logits, labels)
 
         return classifier_loss
@@ -259,6 +260,7 @@ class Dreamer:
         if self.use_classifier:
             kl_rewards = self.classifier.get_reward(
                 z=behavior_learning_infos.priors[:,:-1],
+                h=behavior_learning_infos.deterministics[:,:-1],
                 a=behavior_learning_infos.actions[:,:-1],
                 z_next=behavior_learning_infos.priors[:,1:]
             )

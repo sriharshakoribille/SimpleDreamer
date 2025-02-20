@@ -45,7 +45,7 @@ parameters :
         embedded_state_size : 1024
         buffer :
             # capacity : 5000000
-            capacity : 25000
+            capacity : 20000
         
         encoder : 
             depth : 32
