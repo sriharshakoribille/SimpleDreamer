@@ -14,6 +14,7 @@ from dreamer.utils.utils import (
     DynamicInfos,
 )
 from dreamer.utils.buffer import ReplayBuffer
+from dreamer.utils.utils import FreezeParameters
 
 
 class Dreamer:
@@ -248,7 +249,7 @@ class Dreamer:
         self.writer.add_scalar("agent/lambda_values", lambda_values.mean().item(), self.num_total_episode)
 
         self.actor_optimizer.zero_grad()
-        actor_loss.backward()
+        actor_loss.backward(retain_graph=True)
 
         # Log actor gradients
         self._log_gradients(self.actor, "actor")
@@ -260,27 +261,41 @@ class Dreamer:
         )
         self.actor_optimizer.step()
 
-        value_dist = self.critic(
-            behavior_learning_infos.priors.detach()[:, :-1],
-            behavior_learning_infos.deterministics.detach()[:, :-1],
-        )
-        value_loss = -torch.mean(value_dist.log_prob(lambda_values.detach()))
+        with FreezeParameters([self.reward_predictor, self.encoder, self.decoder]):
+            # value_dist = self.critic(
+            #     behavior_learning_infos.priors.detach()[:, :-1],
+            #     behavior_learning_infos.deterministics.detach()[:, :-1],
+            # )
+            value_dist = self.critic(
+                behavior_learning_infos.priors[:, :-1],
+                behavior_learning_infos.deterministics[:, :-1],
+            )
+            value_loss = -torch.mean(value_dist.log_prob(lambda_values.detach()))
 
-        # Log critic loss before optimizer step
-        self.writer.add_scalar("agent/critic_loss", value_loss.item(), self.num_total_episode)
+            # Log critic loss before optimizer step
+            self.writer.add_scalar("agent/critic_loss", value_loss.item(), self.num_total_episode)
 
-        self.critic_optimizer.zero_grad()
-        value_loss.backward()
+            self.critic_optimizer.zero_grad()
+            self.model_optimizer.zero_grad()
 
-        # Log critic gradients
-        self._log_gradients(self.critic, "critic")
+            value_loss.backward(retain_graph=True)
 
-        nn.utils.clip_grad_norm_(
-            self.critic.parameters(),
-            self.config.clip_grad,
-            norm_type=self.config.grad_norm_type,
-        )
-        self.critic_optimizer.step()
+            # Log critic gradients
+            self._log_gradients(self.critic, "critic")
+
+            nn.utils.clip_grad_norm_(
+                self.critic.parameters(),
+                self.config.clip_grad,
+                norm_type=self.config.grad_norm_type,
+            )
+            nn.utils.clip_grad_norm_(
+                self.model_params,
+                self.config.clip_grad,
+                norm_type=self.config.grad_norm_type,
+            )
+            self.critic_optimizer.step()
+            self.model_optimizer.step()
+
 
     @torch.no_grad()
     def environment_interaction(self, env, num_interaction_episodes, train=True):

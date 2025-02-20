@@ -11,7 +11,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from typing import Iterable
 import yaml
 from attrdict import AttrDict
 
@@ -148,4 +148,23 @@ def load_config(config_path):
     config_path = find_file(config_path)
     with open(config_path) as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
-    return AttrDict(config)
+    return AttrDict(config), config_path
+
+def get_parameters(modules: Iterable[nn.Module]):
+    model_parameters = []
+    for module in modules:
+        model_parameters += list(module.parameters())
+    return model_parameters
+
+class FreezeParameters:
+    def __init__(self, modules: Iterable[nn.Module]):
+        self.modules = modules
+        self.param_states = [p.requires_grad for p in get_parameters(self.modules)]
+
+    def __enter__(self):
+        for param in get_parameters(self.modules):
+            param.requires_grad = False
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for i, param in enumerate(get_parameters(self.modules)):
+            param.requires_grad = self.param_states[i]

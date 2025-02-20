@@ -2,7 +2,7 @@ algorithm : dreamer-v1
 operation :
     save : False
     log_dir : cartpole-swingup
-    device : cuda
+    device : cuda:6
 environment :
     benchmark : dmc
     domain_name : cartpole
@@ -42,7 +42,7 @@ parameters :
         stochastic_size : 30
         embedded_state_size : 1024
         buffer :
-            capacity : 5000000
+            capacity : 25000
         
         encoder : 
             depth : 32

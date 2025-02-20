@@ -10,10 +10,11 @@ from dreamer.algorithms.dreamer import Dreamer
 from dreamer.algorithms.plan2explore import Plan2Explore
 from dreamer.utils.utils import load_config, get_base_directory
 from dreamer.envs.envs import make_dmc_env, make_atari_env, get_env_infos, make_gymnasium_env
+import shutil
 
-
-def main(config_file, custom_msg):
-    config = load_config(config_file)
+def main(config_file, args):
+    config, config_path = load_config(config_file)
+    # config.operation.device = args.device
 
     if config.environment.benchmark == "atari":
         env = make_atari_env(
@@ -51,9 +52,11 @@ def main(config_file, custom_msg):
         + "_"
         + config.operation.log_dir
         + "_"
-        + custom_msg
+        + args.custom_msg
     )
     writer = SummaryWriter(log_dir)
+    shutil.copy(config_path, log_dir+"/config.yml")
+
     device = config.operation.device
     print("Config: ", config)
     print("Initializing agent")
@@ -74,8 +77,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         type=str,
-        default="dmc-walker-walk.yml",
-        help="config file to run(default: dmc-walker-walk.yml)",
+        default="dmc-cartpole-balance.yml",
+        help="config file to run(default: dmc-cartpole-balance.yml)",
     )
     parser.add_argument(
         "--custom_msg",
@@ -83,5 +86,11 @@ if __name__ == "__main__":
         default="",
         help="custom message to append to log directory name(default: Vanilla Dreamer)",
     )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cuda",
+        help="Device to run the code on(default: cuda)",
+    )
     args = parser.parse_args()
-    main(args.config, args.custom_msg)
+    main(args.config, args)
