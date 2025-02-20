@@ -17,7 +17,7 @@ environment :
     
 parameters :
     dreamer :
-        train_iterations : 150
+        train_iterations : 250
         horizon_length : 15
         batch_size : 50
         batch_length : 50
@@ -32,6 +32,7 @@ parameters :
         lambda_ : 0.95
         
         use_continue_flag : False
+        use_classifier : True
         actor_learning_rate : 0.00008
         critic_learning_rate : 0.00008
         model_learning_rate : 0.0006
@@ -43,7 +44,7 @@ parameters :
         embedded_state_size : 1024
         buffer :
             # capacity : 5000000
-            capacity : 1000
+            capacity : 25000
         
         encoder : 
             depth : 32

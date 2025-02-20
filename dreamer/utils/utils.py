@@ -86,7 +86,7 @@ def compute_lambda_values(rewards, values, continues, horizon_length, device, la
     values : (batch_size, time_step, hidden_size)
     continue flag will be added
     """
-    rewards = rewards[:, :-1]
+    # rewards = rewards[:, :-1]  # Manully removed in the previous step itself
     continues = continues[:, :-1]
     next_values = values[:, 1:]
     last = next_values[:, -1]
@@ -149,3 +149,14 @@ def load_config(config_path):
     with open(config_path) as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     return AttrDict(config), config_path
+
+def weight_init(m):
+    if isinstance(m, nn.Linear):
+        nn.init.orthogonal_(m.weight.data)
+        if hasattr(m.bias, 'data'):
+            m.bias.data.fill_(0.0)
+    elif isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+        gain = nn.init.calculate_gain('relu')
+        nn.init.orthogonal_(m.weight.data, gain)
+        if hasattr(m.bias, 'data'):
+            m.bias.data.fill_(0.0)

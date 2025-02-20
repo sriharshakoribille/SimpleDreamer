@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
 
-from dreamer.utils.utils import create_normal_dist, build_network, horizontal_forward
+from dreamer.utils.utils import create_normal_dist, build_network, horizontal_forward, weight_init
 
 
 class RSSM(nn.Module):
@@ -117,7 +117,28 @@ class RewardModel(nn.Module):
         dist = create_normal_dist(x, std=1, event_shape=1)
         return dist
 
+class Discriminator(nn.Module):
+    def __init__(self, action_dims, config):
+        super().__init__()
+        hidden_dims = 512   # Manually taken from alm
+        latent_dims = config.parameters.dreamer.stochastic_size
+        self.classifier = nn.Sequential(
+            nn.Linear(2 * latent_dims + action_dims, hidden_dims), nn.LayerNorm(hidden_dims), 
+            nn.Tanh(), nn.Linear(hidden_dims, hidden_dims),
+            nn.ELU(), nn.Linear(hidden_dims, 2))
+        self.apply(weight_init)
 
+    def forward(self, z, a, z_next):
+        x = torch.cat([z, a, z_next], -1)
+        logits = self.classifier(x)
+        return logits
+    
+    def get_reward(self, z, a, z_next):
+        x = torch.cat([z, a, z_next], -1)
+        logits = self.classifier(x)
+        reward = torch.sub(logits[..., 1], logits[..., 0])
+        return reward.unsqueeze(-1)
+    
 class ContinueModel(nn.Module):
     def __init__(self, config):
         super().__init__()

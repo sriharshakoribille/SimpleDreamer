@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from dreamer.modules.model import RSSM, RewardModel, ContinueModel
+from dreamer.modules.model import RSSM, RewardModel, ContinueModel, Discriminator
 from dreamer.modules.encoder import Encoder
 from dreamer.modules.decoder import Decoder
 from dreamer.modules.actor import Actor
@@ -29,11 +29,14 @@ class Dreamer:
         self.device = device
         self.action_size = action_size
         self.discrete_action_bool = discrete_action_bool
+        self.use_classifier = config.parameters.dreamer.use_classifier
 
         self.encoder = Encoder(observation_shape, config).to(self.device)
         self.decoder = Decoder(observation_shape, config).to(self.device)
         self.rssm = RSSM(action_size, config).to(self.device)
         self.reward_predictor = RewardModel(config).to(self.device)
+        if self.use_classifier:
+            self.classifier = Discriminator(action_size, config).to(self.device)
         if config.parameters.dreamer.use_continue_flag:
             self.continue_predictor = ContinueModel(config).to(self.device)
         self.actor = Actor(discrete_action_bool, action_size, config).to(self.device)
@@ -52,6 +55,8 @@ class Dreamer:
         )
         if self.config.use_continue_flag:
             self.model_params += list(self.continue_predictor.parameters())
+        if self.use_classifier:
+            self.model_params += list(self.classifier.parameters())
 
         self.model_optimizer = torch.optim.Adam(
             self.model_params, lr=self.config.model_learning_rate
@@ -149,6 +154,14 @@ class Dreamer:
         )
         reward_loss = reward_dist.log_prob(data.reward[:, 1:])
 
+        if self.use_classifier:
+            classifier_loss = self._intrinsic_reward_loss(
+                z=posterior_info.posteriors[:, :-1].reshape(-1, self.config.stochastic_size).detach(),
+                action_batch=data.action[:,1:-1].reshape(-1, self.action_size).detach(),
+                z_next=posterior_info.posteriors[:, 1:].reshape(-1, self.config.stochastic_size).detach(),
+                z_next_prior=posterior_info.priors[:, 1:].reshape(-1, self.config.stochastic_size).detach(),
+            )
+
         prior_dist = create_normal_dist(
             posterior_info.prior_dist_means,
             posterior_info.prior_dist_stds,
@@ -173,6 +186,9 @@ class Dreamer:
         if self.config.use_continue_flag:
             model_loss += continue_loss.mean()
 
+        if self.use_classifier:
+            model_loss += classifier_loss
+
         # Log model losses before optimizer step
         self.writer.add_scalar("model/kl_loss", kl_divergence_loss.item(), self.num_total_episode)
         self.writer.add_scalar("model/reconstruction_loss", -reconstruction_observation_loss.mean().item(), self.num_total_episode)
@@ -180,6 +196,8 @@ class Dreamer:
         self.writer.add_scalar("model/total_loss", model_loss.item(), self.num_total_episode)
         if self.config.use_continue_flag:
             self.writer.add_scalar("model/continue_loss", continue_loss.mean().item(), self.num_total_episode)
+        if self.use_classifier:
+            self.writer.add_scalar("model/classifier_loss", classifier_loss.item(), self.num_total_episode)
 
         self.model_optimizer.zero_grad()
         model_loss.backward()
@@ -196,6 +214,20 @@ class Dreamer:
             norm_type=self.config.grad_norm_type,
         )
         self.model_optimizer.step()
+    
+    def _intrinsic_reward_loss(self, z, action_batch, z_next, z_next_prior):
+        ip_batch_shape = z.shape[0]
+        false_batch_idx = np.random.choice(ip_batch_shape, ip_batch_shape//2, replace=False)
+        z_next_target = z_next 
+        z_next_target[false_batch_idx] = z_next_prior[false_batch_idx]
+
+        labels = torch.ones(ip_batch_shape, dtype=torch.long, device=self.device)
+        labels[false_batch_idx] = 0.0
+
+        logits = self.classifier(z, action_batch, z_next_target)
+        classifier_loss = nn.CrossEntropyLoss()(logits, labels)
+
+        return classifier_loss
 
     def behavior_learning(self, states, deterministics):
         """
@@ -212,18 +244,25 @@ class Dreamer:
             deterministic = self.rssm.recurrent_model(state, action, deterministic)
             _, state = self.rssm.transition_model(deterministic)
             self.behavior_learning_infos.append(
-                priors=state, deterministics=deterministic
+                priors=state, deterministics=deterministic, actions=action
             )
 
         self._agent_update(self.behavior_learning_infos.get_stacked())
 
     def _agent_update(self, behavior_learning_infos):
         predicted_rewards = self.reward_predictor(
-            behavior_learning_infos.priors, behavior_learning_infos.deterministics
+            behavior_learning_infos.priors[:,:-1], behavior_learning_infos.deterministics[:,:-1]
         ).mean
         values = self.critic(
             behavior_learning_infos.priors, behavior_learning_infos.deterministics
         ).mean
+        if self.use_classifier:
+            kl_rewards = self.classifier.get_reward(
+                z=behavior_learning_infos.priors[:,:-1],
+                a=behavior_learning_infos.actions[:,:-1],
+                z_next=behavior_learning_infos.priors[:,1:]
+            )
+            predicted_rewards += kl_rewards
 
         if self.config.use_continue_flag:
             continues = self.continue_predictor(
