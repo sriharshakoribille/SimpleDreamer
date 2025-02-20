@@ -262,7 +262,7 @@ class Dreamer:
                 a=behavior_learning_infos.actions[:,:-1],
                 z_next=behavior_learning_infos.priors[:,1:]
             )
-            predicted_rewards += self.config.lambda_cost.kl_rewards
+            predicted_rewards += (self.config.lambda_cost*kl_rewards)
 
         if self.config.use_continue_flag:
             continues = self.continue_predictor(
