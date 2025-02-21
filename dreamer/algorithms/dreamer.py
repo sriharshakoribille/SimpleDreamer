@@ -3,8 +3,8 @@ import torch.nn as nn
 import numpy as np
 
 from dreamer.modules.model import RSSM, RewardModel, ContinueModel, Discriminator
-from dreamer.modules.encoder import Encoder
-from dreamer.modules.decoder import Decoder
+from dreamer.modules.encoder import Encoder_state
+from dreamer.modules.decoder import Decoder_state
 from dreamer.modules.actor import Actor
 from dreamer.modules.critic import Critic
 
@@ -31,8 +31,8 @@ class Dreamer:
         self.discrete_action_bool = discrete_action_bool
         self.use_classifier = config.parameters.dreamer.use_classifier
 
-        self.encoder = Encoder(observation_shape, config).to(self.device)
-        self.decoder = Decoder(observation_shape, config).to(self.device)
+        self.encoder = Encoder_state(observation_shape, config).to(self.device)
+        self.decoder = Decoder_state(observation_shape, config).to(self.device)
         self.rssm = RSSM(action_size, config).to(self.device)
         self.reward_predictor = RewardModel(config).to(self.device)
         if self.use_classifier:

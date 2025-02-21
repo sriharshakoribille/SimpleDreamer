@@ -1,5 +1,5 @@
 import torch.nn as nn
-
+from dreamer.utils.utils import build_network
 from dreamer.utils.utils import (
     initialize_weights,
     horizontal_forward,
@@ -52,6 +52,29 @@ class Decoder(nn.Module):
             ),
         )
         self.network.apply(initialize_weights)
+
+    def forward(self, posterior, deterministic):
+        x = horizontal_forward(
+            self.network, posterior, deterministic, output_shape=self.observation_shape
+        )
+        dist = create_normal_dist(x, std=1, event_shape=len(self.observation_shape))
+        return dist
+
+class Decoder_state(nn.Module):
+    def __init__(self, observation_shape, config):
+        super().__init__()
+        self.config = config.parameters.dreamer.decoder
+        self.observation_shape = observation_shape
+        self.stochastic_size = config.parameters.dreamer.stochastic_size
+        self.deterministic_size = config.parameters.dreamer.deterministic_size
+
+        self.network = build_network(
+            self.stochastic_size+self.deterministic_size,
+            self.config.hidden_size,
+            self.config.num_layers,
+            self.config.activation,
+            self.observation_shape[0],
+        )
 
     def forward(self, posterior, deterministic):
         x = horizontal_forward(

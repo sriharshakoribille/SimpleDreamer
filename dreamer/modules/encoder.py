@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from dreamer.utils.utils import build_network
 
 from dreamer.utils.utils import (
     initialize_weights,
@@ -49,3 +50,24 @@ class Encoder(nn.Module):
 
     def forward(self, x):
         return horizontal_forward(self.network, x, input_shape=self.observation_shape)
+
+class Encoder_state(nn.Module):
+    def __init__(self, observation_shape, config):
+        super().__init__()
+        self.config = config.parameters.dreamer.encoder
+        self.observation_shape = observation_shape
+        self.embedded_state_size = config.parameters.dreamer.embedded_state_size
+
+        self.network = build_network(
+            self.observation_shape[0],
+            self.config.hidden_size,
+            self.config.num_layers,
+            self.config.activation,
+            self.embedded_state_size,
+        )
+
+    def forward(self, x):
+        x = horizontal_forward(
+            self.network, x, input_shape=self.observation_shape
+        )
+        return x
