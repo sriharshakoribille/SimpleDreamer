@@ -243,16 +243,38 @@ class Dreamer:
         for t in range(self.config.horizon_length):
             action = self.actor(state, deterministic)
             deterministic = self.rssm.recurrent_model(state, action, deterministic)
-            _, state = self.rssm.transition_model(deterministic)
+            prior_dist, state = self.rssm.transition_model(deterministic)
             self.behavior_learning_infos.append(
                 priors=state, deterministics=deterministic, actions=action
             )
+            if self.config.use_info_gain:
+                info_gain = self.information_gain(state, deterministic, prior_dist)
+                self.behavior_learning_infos.append(info_gains=info_gain)
 
         self._agent_update(self.behavior_learning_infos.get_stacked())
+    
+    def information_gain(self,priors, deterministics, prior_dist):
+        with torch.no_grad():
+            imagined_reconstructed_observation_dist = self.decoder(
+                priors, deterministics
+            )
+            imagined_obs = imagined_reconstructed_observation_dist.mean
+            imagined_embedded_obs = self.encoder(imagined_obs)
+            imagined_posterior_dist, imagined_posterior = self.rssm.representation_model(
+                imagined_embedded_obs, deterministics
+            )
+            info_gain = torch.distributions.kl.kl_divergence(
+                torch.distributions.Independent(prior_dist, 1),
+                torch.distributions.Independent(imagined_posterior_dist, 1)
+                )
+            info_gain = torch.min(
+                torch.tensor(self.config.free_nats).to(self.device), info_gain
+                )
+        return info_gain
 
     def _agent_update(self, behavior_learning_infos):
         predicted_rewards = self.reward_predictor(
-            behavior_learning_infos.priors[:,:-1], behavior_learning_infos.deterministics[:,:-1]
+            behavior_learning_infos.priors, behavior_learning_infos.deterministics
         ).mean
         values = self.critic(
             behavior_learning_infos.priors, behavior_learning_infos.deterministics
@@ -265,6 +287,8 @@ class Dreamer:
                 z_next=behavior_learning_infos.priors[:,1:]
             )
             predicted_rewards += (self.config.lambda_cost*kl_rewards)
+        if self.config.use_info_gain:
+            predicted_rewards -= (self.config.info_cost*behavior_learning_infos.info_gains.unsqueeze(-1))
 
         if self.config.use_continue_flag:
             continues = self.continue_predictor(
@@ -293,6 +317,8 @@ class Dreamer:
             self.writer.add_scalar("agent/continue_values", continues.mean().item(), self.num_total_episode)
         if self.use_classifier:
             self.writer.add_scalar("agent/kl_rewards", kl_rewards.mean().item(), self.num_total_episode)
+        if self.config.use_info_gain:
+            self.writer.add_scalar("agent/info_gains", behavior_learning_infos.info_gains.mean().item(), self.num_total_episode)
 
         self.actor_optimizer.zero_grad()
         actor_loss.backward()

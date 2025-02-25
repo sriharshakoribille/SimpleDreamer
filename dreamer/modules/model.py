@@ -89,7 +89,7 @@ class RepresentationModel(nn.Module):
         )
 
     def forward(self, embedded_observation, deterministic):
-        x = self.network(torch.cat((embedded_observation, deterministic), 1))
+        x = self.network(torch.cat((embedded_observation, deterministic), -1))
         posterior_dist = create_normal_dist(x, min_std=self.config.min_std)
         posterior = posterior_dist.rsample()
         return posterior_dist, posterior
