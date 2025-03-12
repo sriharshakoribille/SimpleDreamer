@@ -61,7 +61,8 @@ def main(config_file, custom_msg):
     print("Initializing agent")
     if config.algorithm == "dreamer-v1":
         agent = Dreamer(
-            obs_shape, discrete_action_bool, action_size, writer, device, config
+            obs_shape, discrete_action_bool, action_size, writer, device, config,
+            log_dir = log_dir
         )
     elif config.algorithm == "plan2explore":
         agent = Plan2Explore(

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import os
 
 from dreamer.modules.model import RSSM, RewardModel, ContinueModel, Discriminator
 from dreamer.modules.encoder import Encoder
@@ -25,11 +26,13 @@ class Dreamer:
         writer,
         device,
         config,
+        log_dir,
     ):
         self.device = device
         self.action_size = action_size
         self.discrete_action_bool = discrete_action_bool
         self.use_classifier = config.parameters.dreamer.use_classifier
+        self.log_dir = log_dir
 
         self.encoder = Encoder(observation_shape, config).to(self.device)
         self.decoder = Decoder(observation_shape, config).to(self.device)
@@ -45,6 +48,7 @@ class Dreamer:
         self.buffer = ReplayBuffer(observation_shape, action_size, self.device, config)
 
         self.config = config.parameters.dreamer
+        self.operation = config.operation
 
         # optimizer
         self.model_params = (
@@ -100,6 +104,11 @@ class Dreamer:
 
             self.environment_interaction(env, self.config.num_interaction_episodes)
             self.evaluate(env)
+
+            # Save the agent periodically
+            if self.operation.save:
+                if (iteration+1) % self.operation.save_freq == 0:
+                    self.save_agent()
 
     def evaluate(self, env):
         self.environment_interaction(env, self.config.num_evaluate, train=False)
@@ -286,7 +295,6 @@ class Dreamer:
                 a=behavior_learning_infos.actions[:,:-1],
                 z_next=behavior_learning_infos.priors[:,1:]
             )
-            predicted_rewards += (self.config.lambda_cost*kl_rewards)
         if self.config.use_info_gain:
             predicted_rewards -= (self.config.info_cost*behavior_learning_infos.info_gains.unsqueeze(-1))
 
@@ -304,9 +312,21 @@ class Dreamer:
             self.config.horizon_length,
             self.device,
             self.config.lambda_,
+            kl_rewards=self.config.lambda_cost*kl_rewards if self.use_classifier else None,
         )
 
         actor_loss = -torch.mean(lambda_values)
+
+        # lambda_info_values = compute_lambda_values(
+        #     predicted_info,
+        #     values,
+        #     continues,
+        #     self.config.horizon_length,
+        #     self.device,
+        #     self.config.lambda_,
+        # )
+
+        # actor_loss = -torch.mean(lambda_values + lambda_info_values)
 
         # Log actor loss before optimizer step
         self.writer.add_scalar("agent/actor_loss", actor_loss.item(), self.num_total_episode)
@@ -411,3 +431,72 @@ class Dreamer:
             evaluate_score = score_lst.mean()
             print("evaluate score : ", evaluate_score)
             self.writer.add_scalar("evaluation/score", evaluate_score, self.num_total_episode)
+
+    def save_agent(self):        
+        # Create a filename with the current episode number
+        filename = f"ckpt_{self.num_total_episode}.pt"
+        filepath = os.path.join(self.log_dir, filename)
+        
+        # Save all model parameters
+        checkpoint = {
+            'encoder': self.encoder.state_dict(),
+            'decoder': self.decoder.state_dict(),
+            'rssm': self.rssm.state_dict(),
+            'reward_predictor': self.reward_predictor.state_dict(),
+            'actor': self.actor.state_dict(),
+            'critic': self.critic.state_dict(),
+            'num_total_episode': self.num_total_episode,
+            'model_optimizer': self.model_optimizer.state_dict(),
+            'actor_optimizer': self.actor_optimizer.state_dict(),
+            'critic_optimizer': self.critic_optimizer.state_dict()
+        }
+        
+        # Add conditional components if they exist
+        if self.config.use_continue_flag:
+            checkpoint['continue_predictor'] = self.continue_predictor.state_dict()
+        
+        if self.use_classifier:
+            checkpoint['classifier'] = self.classifier.state_dict()
+        
+        # Save the checkpoint
+        torch.save(checkpoint, filepath)
+        print(f"Agent saved to {filepath}")
+        
+        return filepath
+    
+    def load_agent(self, checkpoint_path):
+        """
+        Load the agent's model parameters from a file.
+        
+        Args:
+            checkpoint_path (str): Path to the checkpoint file.
+        """
+        if not os.path.exists(checkpoint_path):
+            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
+        
+        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        
+        # Load all model parameters
+        self.encoder.load_state_dict(checkpoint['encoder'])
+        self.decoder.load_state_dict(checkpoint['decoder'])
+        self.rssm.load_state_dict(checkpoint['rssm'])
+        self.reward_predictor.load_state_dict(checkpoint['reward_predictor'])
+        self.actor.load_state_dict(checkpoint['actor'])
+        self.critic.load_state_dict(checkpoint['critic'])
+        
+        # Load conditional components if they exist in the checkpoint
+        if self.config.use_continue_flag and 'continue_predictor' in checkpoint:
+            self.continue_predictor.load_state_dict(checkpoint['continue_predictor'])
+        
+        if self.use_classifier and 'classifier' in checkpoint:
+            self.classifier.load_state_dict(checkpoint['classifier'])
+        
+        # Load optimizer states
+        self.model_optimizer.load_state_dict(checkpoint['model_optimizer'])
+        self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer'])
+        self.critic_optimizer.load_state_dict(checkpoint['critic_optimizer'])
+        
+        # Load training state
+        self.num_total_episode = checkpoint['num_total_episode']
+        
+        print(f"Agent loaded from {checkpoint_path}")

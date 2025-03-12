@@ -80,13 +80,15 @@ def create_normal_dist(
     return dist
 
 
-def compute_lambda_values(rewards, values, continues, horizon_length, device, lambda_):
+def compute_lambda_values(rewards, values, continues, horizon_length, device, lambda_, kl_rewards=None):
     """
     rewards : (batch_size, time_step, hidden_size)
     values : (batch_size, time_step, hidden_size)
     continue flag will be added
     """
     rewards = rewards[:, :-1]  # Manully removed in the previous step itself
+    if kl_rewards is not None:
+        rewards = rewards + kl_rewards
     continues = continues[:, :-1]
     next_values = values[:, 1:]
     last = next_values[:, -1]
