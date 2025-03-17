@@ -47,6 +47,7 @@ def main(config_file, custom_msg):
     log_dir = (
         get_base_directory()
         + "/runs_new_2/"
+        + config.operation.log_dir + "/"
         + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         + "_"
         + config.operation.log_dir
