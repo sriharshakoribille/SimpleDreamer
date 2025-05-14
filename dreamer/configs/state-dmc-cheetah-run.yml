@@ -21,7 +21,7 @@ parameters :
         horizon_length : 15
         batch_size : 50
         batch_length : 50
-        collect_interval : 100
+        collect_interval : 1
         num_interaction_episodes : 1
         seed_episodes : 5
         num_evaluate : 3
@@ -33,48 +33,48 @@ parameters :
         
         use_continue_flag : False
         use_classifier : False
-        actor_learning_rate : 0.0001
-        critic_learning_rate : 0.0001
-        model_learning_rate : 0.0001
+        actor_learning_rate : 0.00008
+        critic_learning_rate : 0.00008
+        model_learning_rate : 0.0008
         grad_norm_type : 2
         clip_grad : 100
         
-        deterministic_size : 64
-        stochastic_size : 30
-        embedded_state_size : 256
+        deterministic_size : 256
+        stochastic_size : 17
+        embedded_state_size : 17
         buffer :
-            capacity : 50000
+            capacity : 500000
         
         encoder : 
-            hidden_size : 300
+            hidden_size : 128
             num_layers : 2
             activation : ReLU
 
         decoder : 
-            hidden_size : 300
-            num_layers : 2
+            hidden_size : 128
+            num_layers : 3
             activation : ReLU
 
         rssm :
             recurrent_model : 
-                hidden_size : 200
+                hidden_size : 128
                 activation : ELU
 
             transition_model : 
-                hidden_size : 200
+                hidden_size : 128
                 num_layers : 3
                 activation : ELU
                 min_std : 0.1
 
             representation_model:
-                hidden_size : 200
+                hidden_size : 128
                 num_layers : 3
                 activation : ELU
                 min_std : 0.1
             
         reward :
-            hidden_size : 400
-            num_layers : 2
+            hidden_size : 128
+            num_layers : 3
             activation : ELU
 
         continue_ :
@@ -89,9 +89,9 @@ parameters :
                 init_std : 5.
                 mean_scale : 5
                 activation : ELU
-                num_layers : 3
+                num_layers : 5
 
             critic : 
                 hidden_size : 400
                 activation : ELU
-                num_layers : 3 
+                num_layers : 5 
