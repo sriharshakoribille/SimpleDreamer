@@ -1,12 +1,12 @@
 algorithm : dreamer-v1
 operation :
     save : False
-    log_dir : cartpole-balance
+    log_dir : cheetah-run
     device : cuda
 environment :
     benchmark : dmc
-    domain_name : cartpole
-    task_name : balance
+    domain_name : cheetah
+    task_name : run
     seed : 0
     visualize_reward : False
     from_pixels : False
@@ -17,9 +17,9 @@ environment :
     
 parameters :
     dreamer :
-        train_iterations : 500
+        train_iterations : 1000
         horizon_length : 15
-        batch_size : 128
+        batch_size : 50
         batch_length : 50
         collect_interval : 100
         num_interaction_episodes : 1
@@ -33,18 +33,16 @@ parameters :
         
         use_continue_flag : False
         use_classifier : False
-        lambda_cost : 0.1
         actor_learning_rate : 0.0001
         critic_learning_rate : 0.0001
-        model_learning_rate : 0.0003
+        model_learning_rate : 0.0001
         grad_norm_type : 2
         clip_grad : 100
         
         deterministic_size : 64
         stochastic_size : 30
-        embedded_state_size : 64
+        embedded_state_size : 256
         buffer :
-            # capacity : 5000000
             capacity : 50000
         
         encoder : 
@@ -64,13 +62,13 @@ parameters :
 
             transition_model : 
                 hidden_size : 200
-                num_layers : 2
+                num_layers : 3
                 activation : ELU
                 min_std : 0.1
 
             representation_model:
                 hidden_size : 200
-                num_layers : 2
+                num_layers : 3
                 activation : ELU
                 min_std : 0.1
             
@@ -91,7 +89,7 @@ parameters :
                 init_std : 5.
                 mean_scale : 5
                 activation : ELU
-                num_layers : 2
+                num_layers : 3
 
             critic : 
                 hidden_size : 400

@@ -21,6 +21,15 @@
             "console": "integratedTerminal",
             "args": ["--config", "state-dmc-cartpole-balance", 
             "--custom_msg", "debugging_state"]
+        },
+        {
+            "name": "state dreamer cheetah",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "args": ["--config", "state-dmc-cheetah-run", 
+            "--custom_msg", "debugging_state"]
         }
     ]
 }

@@ -357,7 +357,7 @@ class Dreamer:
                     buffer_action = action.cpu().numpy()[0]
                     env_action = buffer_action
 
-                next_observation, reward, done, info = env.step(env_action)
+                next_observation, reward, done, _,info = env.step(env_action)
                 if train:
                     self.buffer.add(
                         observation, buffer_action, reward, next_observation, done
