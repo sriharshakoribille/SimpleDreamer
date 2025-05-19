@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from dreamer.algorithms.dreamer import Dreamer
 from dreamer.algorithms.plan2explore import Plan2Explore
 from dreamer.utils.utils import load_config, get_base_directory
-from dreamer.envs.envs import make_dmc_env, make_atari_env, get_env_infos, make_gymnasium_env
+from dreamer.envs.envs import make_dmc_env, make_atari_env, get_env_infos, make_gym_env
 import shutil
 
 def main(config_file, custom_msg):
@@ -36,9 +36,11 @@ def main(config_file, custom_msg):
             frame_skip=config.environment.frame_skip,
             pixel_norm=config.environment.pixel_norm,
         )
-    elif config.environment.benchmark == "gymnasium":
-        env = make_gymnasium_env(
+    elif config.environment.benchmark == "gym":
+        env = make_gym_env(
             task_name=config.environment.task_name,
+            frame_skip=config.environment.frame_skip,
+            from_pixels=config.environment.from_pixels,
             width=config.environment.width,
             height=config.environment.height,
         )

@@ -28,12 +28,14 @@ class SkipFrame(gym.Wrapper):
 
     def step(self, action):
         total_reward = 0.0
-        for i in range(self._skip):
-            obs, reward, done, info = self.env.step(action)
+        terminated = False
+        truncated = False
+        for _ in range(self._skip):
+            obs, reward, terminated, truncated, info = self.env.step(action)
             total_reward += reward
-            if done:
+            if terminated or truncated:
                 break
-        return obs, total_reward, done, info
+        return obs, total_reward, terminated, truncated, info
 
 
 class PixelNormalization(gym.Wrapper):
@@ -44,9 +46,37 @@ class PixelNormalization(gym.Wrapper):
         return obs / 255.0 - 0.5
 
     def step(self, action):
-        obs, reward, done, _, info = self.env.step(action)
-        return self._pixel_normalization(obs), reward, done, info
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        return self._pixel_normalization(obs), reward, terminated, truncated, info
 
     def reset(self):
-        obs = self.env.reset()
-        return self._pixel_normalization(obs)
+        obs, info = self.env.reset()
+        return self._pixel_normalization(obs), info
+
+# gym.wrappers.AddRenderObservation also does the same thing
+class GymPixelEnv(gym.Wrapper):
+    def __init__(self, env):
+        self._env = env
+        obs,_ = self.reset()
+        self.obs_shape = obs.shape
+
+    @property
+    def observation_space(self):
+        return gym.spaces.Box(low=0, high=255, shape=self.obs_shape, dtype=np.uint8)
+        
+    @property
+    def action_space(self):
+        return self._env.action_space
+    
+    def render(self):
+        return self._env.render()
+
+    def reset(self, seed=None, options=None):
+        obs, info = self._env.reset()
+        obs = self.render()
+        return obs, info
+    
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self._env.step(action)
+        obs = self.render()
+        return obs, reward, terminated, truncated, info

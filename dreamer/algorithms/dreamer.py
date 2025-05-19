@@ -335,7 +335,7 @@ class Dreamer:
             posterior, deterministic = self.rssm.recurrent_model_input_init(1)
             action = torch.zeros(1, self.action_size).to(self.device)
 
-            observation = env.reset()
+            observation, info = env.reset()
             embedded_observation = self.encoder(
                 torch.from_numpy(observation).float().to(self.device)
             )
@@ -362,7 +362,8 @@ class Dreamer:
                     buffer_action = action.cpu().numpy()[0]
                     env_action = buffer_action
 
-                next_observation, reward, done, _,info = env.step(env_action)
+                next_observation, reward, terminated, truncated, info = env.step(env_action)
+                done = terminated or truncated
                 if train:
                     self.buffer.add(
                         observation, buffer_action, reward, next_observation, done
