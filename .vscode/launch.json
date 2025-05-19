@@ -5,12 +5,30 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "dreamer cartpole",
+            "name": "dmc-cartpole",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
             "args": ["--config", "dmc-cartpole-balance", 
+            "--custom_msg", "debugging"]
+        },
+        {
+            "name": "dmc-cheetah",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "args": ["--config", "dmc-cheetah-run", 
+            "--custom_msg", "debugging"]
+        },
+        {
+            "name": "gym-cheetah",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "args": ["--config", "gym-cheetah-run", 
             "--custom_msg", "debugging"]
         }
     ]
