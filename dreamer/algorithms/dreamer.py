@@ -112,6 +112,12 @@ class Dreamer:
 
     def evaluate(self, env):
         self.environment_interaction(env, self.config.num_evaluate, train=False)
+    
+    def evaluate_agent(self, env, num_episodes):
+        # This function is used for evaluation only
+        for iteration in range(num_episodes):
+            self.environment_interaction(env, 1, train=False)
+            self.num_total_episode += 1
 
     def dynamic_learning(self, data):
         prior, deterministic = self.rssm.recurrent_model_input_init(len(data.action))

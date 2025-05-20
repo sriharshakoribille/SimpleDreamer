@@ -139,10 +139,26 @@ def find_file(file_name):
         f"File '{file_name}' not found in subdirectories of {cur_dir}"
     )
 
+def find_dir(dir_name_substr):
+    cur_dir = os.getcwd()
+    for root, dirs, files in os.walk(cur_dir):
+        for d in dirs:
+            if dir_name_substr in d:
+                return os.path.join(root, d)
+    raise FileNotFoundError(f"Directory containing '{dir_name_substr}' \
+                            not found in subdirectories of {cur_dir}")
 
 def get_base_directory():
     return "/".join(find_file("main.py").split("/")[:-1])
 
+def load_config_dir(config_dir):
+    config_dir = find_dir(config_dir)
+    config_path = os.path.join(config_dir, "config.yml")
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Config file not found in {config_dir}")
+    with open(config_path) as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+    return AttrDict(config), config_dir
 
 def load_config(config_path):
     if not config_path.endswith(".yml"):
