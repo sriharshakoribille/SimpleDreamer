@@ -49,7 +49,7 @@ class PixelNormalization(gym.Wrapper):
         obs, reward, terminated, truncated, info = self.env.step(action)
         return self._pixel_normalization(obs), reward, terminated, truncated, info
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
         obs, info = self.env.reset()
         return self._pixel_normalization(obs), info
 
