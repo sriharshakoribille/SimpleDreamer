@@ -1,0 +1,102 @@
+algorithm : dreamer-v1
+operation :
+    save : True
+    save_freq: 100
+    log_dir : HalfCheetah-v5
+    device : cuda
+environment :
+    benchmark : gym
+    domain_name : cheetah
+    task_name : HalfCheetah-v5
+    seed : 0
+    visualize_reward : False
+    from_pixels : False
+    height : 64
+    width : 64
+    frame_skip : 1
+    pixel_norm : True
+    time_limit : 500
+    
+parameters :
+    dreamer :
+        train_iterations : 500
+        horizon_length : 15
+        batch_size : 50
+        batch_length : 50
+        collect_interval : 10
+        num_interaction_episodes : 1
+        seed_episodes : 5
+        num_evaluate : 3
+        
+        kl_divergence_scale : 1
+        free_nats : 3
+        discount : 0.99
+        lambda_ : 0.95
+        
+        use_continue_flag : False
+        use_classifier : False
+        use_info_gain : False
+        lambda_cost : 0.1
+        info_cost : 0.1
+        actor_learning_rate : 0.0001
+        critic_learning_rate : 0.0001
+        model_learning_rate : 0.001
+        grad_norm_type : 2
+        clip_grad : 100
+        
+        deterministic_size : 200
+        stochastic_size : 30
+        embedded_state_size : 1024
+        buffer :
+            capacity : 50000
+        
+        encoder : 
+            hidden_size : 400
+            num_layers : 4
+            activation : ELU
+
+        decoder : 
+            hidden_size : 400
+            num_layers : 4
+            activation : Tanh
+
+        rssm :
+            recurrent_model : 
+                hidden_size : 200
+                activation : ELU
+
+            transition_model : 
+                hidden_size : 200
+                num_layers : 2
+                activation : ELU
+                min_std : 0.1
+
+            representation_model:
+                hidden_size : 200
+                num_layers : 2
+                activation : ELU
+                min_std : 0.1
+            
+        reward :
+            hidden_size : 400
+            num_layers : 2
+            activation : ELU
+
+        continue_ :
+            hidden_size : 400
+            num_layers : 3
+            activation : ELU
+        
+        agent :
+            actor :
+                hidden_size : 400
+                min_std : 0.0001
+                init_std : 5.
+                mean_scale : 5
+                activation : ELU
+                num_layers : 2
+
+            critic : 
+                hidden_size : 400
+                activation : ELU
+                num_layers : 3 
