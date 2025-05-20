@@ -73,6 +73,7 @@ def main(config_file, custom_msg):
         )
     print("Training agent")
     agent.train(env)
+    env.close()
 
 
 if __name__ == "__main__":
