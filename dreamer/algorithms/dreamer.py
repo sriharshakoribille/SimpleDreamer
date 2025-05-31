@@ -33,6 +33,7 @@ class Dreamer:
         self.discrete_action_bool = discrete_action_bool
         self.use_classifier = config.parameters.dreamer.use_classifier
         self.log_dir = log_dir
+        self.interaction_steps = 0
 
         self.encoder = Encoder(observation_shape, config).to(self.device)
         self.decoder = Decoder(observation_shape, config).to(self.device)
@@ -420,6 +421,7 @@ class Dreamer:
                     self.buffer.add(
                         observation, buffer_action, reward, next_observation, done
                     )
+                    self.interaction_steps += 1
                 score += reward
                 embedded_observation = self.encoder(
                     torch.from_numpy(next_observation).float().to(self.device)
@@ -430,6 +432,9 @@ class Dreamer:
                         self.num_total_episode += 1
                         self.writer.add_scalar(
                             "training/score", score, self.num_total_episode
+                        )
+                        self.writer.add_scalar(
+                            "training/interaction_steps", self.interaction_steps, self.num_total_episode
                         )
                     else:
                         score_lst = np.append(score_lst, score)
