@@ -8,7 +8,8 @@ environment :
     benchmark : dmc
     domain_name : cheetah
     task_name : run
-    seed : 0
+    seed : 1
+    deterministic: True
     visualize_reward : False
     from_pixels : True
     height : 64
@@ -20,7 +21,7 @@ parameters :
     dreamer :
         train_iterations : 500
         horizon_length : 15
-        batch_size : 50
+        batch_size : 25
         batch_length : 50
         collect_interval : 100
         num_interaction_episodes : 1
@@ -33,10 +34,10 @@ parameters :
         lambda_ : 0.95
         
         use_continue_flag : False
-        use_classifier : True
+        use_classifier : False
         use_info_gain : False
-        lambda_cost : 0.1
-        info_cost : 0.1
+        lambda_cost : -0.1
+        info_cost : -0.1
         actor_learning_rate : 0.00008
         critic_learning_rate : 0.00008
         model_learning_rate : 0.0006

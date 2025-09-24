@@ -8,12 +8,16 @@ from torch.utils.tensorboard import SummaryWriter
 
 from dreamer.algorithms.dreamer import Dreamer
 from dreamer.algorithms.plan2explore import Plan2Explore
-from dreamer.utils.utils import load_config, get_base_directory
+from dreamer.utils.utils import load_config, get_base_directory, set_seed_everywhere, enable_deterministic_run
 from dreamer.envs.envs import make_dmc_env, make_atari_env, get_env_infos, make_gym_env
 import shutil
 
 def main(config_file, custom_msg):
     config, config_path = load_config(config_file)
+
+    set_seed_everywhere(config.environment.seed)
+    if config.environment.deterministic:
+        enable_deterministic_run()
 
     if config.environment.benchmark == "atari":
         env = make_atari_env(
@@ -43,12 +47,13 @@ def main(config_file, custom_msg):
             from_pixels=config.environment.from_pixels,
             width=config.environment.width,
             height=config.environment.height,
+            seed=config.environment.seed,
         )
     obs_shape, discrete_action_bool, action_size = get_env_infos(env)
 
     log_dir = (
         get_base_directory()
-        + "/runs_new_2/"
+        + "/runs_new_3/"
         + config.operation.log_dir + "/"
         + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         + "_"

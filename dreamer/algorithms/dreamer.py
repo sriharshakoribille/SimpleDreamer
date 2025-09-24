@@ -34,6 +34,7 @@ class Dreamer:
         self.use_classifier = config.parameters.dreamer.use_classifier
         self.log_dir = log_dir
         self.interaction_steps = 0
+        self.rng = np.random.default_rng(config.environment.seed)
 
         self.encoder = Encoder(observation_shape, config).to(self.device)
         self.decoder = Decoder(observation_shape, config).to(self.device)
@@ -50,6 +51,7 @@ class Dreamer:
 
         self.config = config.parameters.dreamer
         self.operation = config.operation
+        self.action_repeat = config.environment.frame_skip
 
         # optimizer
         self.model_params = (
@@ -171,12 +173,17 @@ class Dreamer:
         reward_loss = reward_dist.log_prob(data.reward[:, 1:])
 
         if self.use_classifier:
+            # classifier_loss = self._intrinsic_reward_loss(
+            #     z=posterior_info.posteriors[:, :-1].reshape(-1, self.config.stochastic_size).detach(),
+            #     h=posterior_info.deterministics[:, :-1].reshape(-1, self.config.deterministic_size).detach(),
+            #     action_batch=data.action[:,1:-1].reshape(-1, self.action_size).detach(),
+            #     z_next=posterior_info.posteriors[:, 1:].reshape(-1, self.config.stochastic_size).detach(),
+            #     z_next_prior=posterior_info.priors[:, 1:].reshape(-1, self.config.stochastic_size).detach(),
+            # )
             classifier_loss = self._intrinsic_reward_loss(
-                z=posterior_info.posteriors[:, :-1].reshape(-1, self.config.stochastic_size).detach(),
-                h=posterior_info.deterministics[:, :-1].reshape(-1, self.config.deterministic_size).detach(),
-                action_batch=data.action[:,1:-1].reshape(-1, self.action_size).detach(),
-                z_next=posterior_info.posteriors[:, 1:].reshape(-1, self.config.stochastic_size).detach(),
-                z_next_prior=posterior_info.priors[:, 1:].reshape(-1, self.config.stochastic_size).detach(),
+                z=posterior_info.posteriors.reshape(-1, self.config.stochastic_size).detach(),
+                h=posterior_info.deterministics.reshape(-1, self.config.deterministic_size).detach(),
+                z_prior=posterior_info.priors.reshape(-1, self.config.stochastic_size).detach(),
             )
 
         prior_dist = create_normal_dist(
@@ -232,16 +239,17 @@ class Dreamer:
         )
         self.model_optimizer.step()
     
-    def _intrinsic_reward_loss(self, z, h, action_batch, z_next, z_next_prior):
+    # def _intrinsic_reward_loss(self, z, h, action_batch, z_next, z_next_prior):
+    def _intrinsic_reward_loss(self, z, h, z_prior):
         ip_batch_shape = z.shape[0]
-        false_batch_idx = np.random.choice(ip_batch_shape, ip_batch_shape//2, replace=False)
-        z_next_target = z_next 
-        z_next_target[false_batch_idx] = z_next_prior[false_batch_idx]
+        false_batch_idx = self.rng.choice(ip_batch_shape, ip_batch_shape//2, replace=False)
+        z_target = z 
+        z_target[false_batch_idx] = z_prior[false_batch_idx]
 
         labels = torch.ones(ip_batch_shape, dtype=torch.long, device=self.device)
         labels[false_batch_idx] = 0.0
 
-        logits = self.classifier(z, h, action_batch, z_next_target)
+        logits = self.classifier(z_target, h)
         classifier_loss = nn.CrossEntropyLoss()(logits, labels)
 
         return classifier_loss
@@ -297,10 +305,8 @@ class Dreamer:
         ).mean
         if self.use_classifier:
             kl_rewards = self.classifier.get_reward(
-                z=behavior_learning_infos.priors[:,:-1],
-                h=behavior_learning_infos.deterministics[:,:-1],
-                a=behavior_learning_infos.actions[:,:-1],
-                z_next=behavior_learning_infos.priors[:,1:]
+                z=behavior_learning_infos.priors,
+                h=behavior_learning_infos.deterministics
             )
         if self.config.use_info_gain:
             predicted_rewards -= (self.config.info_cost*behavior_learning_infos.info_gains.unsqueeze(-1))
@@ -421,7 +427,7 @@ class Dreamer:
                     self.buffer.add(
                         observation, buffer_action, reward, next_observation, done
                     )
-                    self.interaction_steps += 1
+                    self.interaction_steps += self.action_repeat
                 score += reward
                 embedded_observation = self.encoder(
                     torch.from_numpy(next_observation).float().to(self.device)

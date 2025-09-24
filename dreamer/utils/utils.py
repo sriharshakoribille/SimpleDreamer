@@ -11,6 +11,8 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
+import random
 
 import yaml
 from attrdict import AttrDict
@@ -86,9 +88,10 @@ def compute_lambda_values(rewards, values, continues, horizon_length, device, la
     values : (batch_size, time_step, hidden_size)
     continue flag will be added
     """
-    rewards = rewards[:, :-1]  # Manully removed in the previous step itself
     if kl_rewards is not None:
         rewards = rewards + kl_rewards
+        
+    rewards = rewards[:, :-1]  # Manully removed in the previous step itself
     continues = continues[:, :-1]
     next_values = values[:, 1:]
     last = next_values[:, -1]
@@ -178,3 +181,15 @@ def weight_init(m):
         nn.init.orthogonal_(m.weight.data, gain)
         if hasattr(m.bias, 'data'):
             m.bias.data.fill_(0.0)
+
+def set_seed_everywhere(seed):
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+
+def enable_deterministic_run():
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+    torch.backends.cudnn.benchmark = False
+    torch.use_deterministic_algorithms(True)

@@ -34,9 +34,9 @@ parameters :
         lambda_ : 0.95
         
         use_continue_flag : False
-        use_classifier : False
+        use_classifier : True
         use_info_gain : False
-        lambda_cost : 0.1
+        lambda_cost : -0.1
         info_cost : 0.1
         actor_learning_rate : 0.00008
         critic_learning_rate : 0.00008

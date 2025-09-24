@@ -1,13 +1,15 @@
 algorithm : dreamer-v1
 operation :
-    save : False
+    save : True
+    save_freq: 250
     log_dir : hopper-hop
     device : cuda
 environment :
     benchmark : dmc
     domain_name : hopper
     task_name : hop
-    seed : 0
+    seed : 3
+    deterministic: True
     visualize_reward : False
     from_pixels : True
     height : 64
@@ -17,7 +19,7 @@ environment :
     
 parameters :
     dreamer :
-        train_iterations : 1000
+        train_iterations : 750
         horizon_length : 15
         batch_size : 50
         batch_length : 50
@@ -32,6 +34,10 @@ parameters :
         lambda_ : 0.95
         
         use_continue_flag : False
+        use_classifier : True
+        use_info_gain : False
+        lambda_cost : 0.025
+        info_cost : -0.1
         actor_learning_rate : 0.00008
         critic_learning_rate : 0.00008
         model_learning_rate : 0.0006
@@ -42,7 +48,7 @@ parameters :
         stochastic_size : 30
         embedded_state_size : 1024
         buffer :
-            capacity : 5000000
+            capacity : 50000
         
         encoder : 
             depth : 32

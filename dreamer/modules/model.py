@@ -121,21 +121,21 @@ class Discriminator(nn.Module):
     def __init__(self, action_dims, config):
         super().__init__()
         hidden_dims = 512   # Manually taken from alm
-        latent_dims = config.parameters.dreamer.stochastic_size
-        det_dims = config.parameters.dreamer.deterministic_size
+        latent_dims = config.parameters.dreamer.stochastic_size \
+            + config.parameters.dreamer.deterministic_size
         self.classifier = nn.Sequential(
-            nn.Linear(2 * latent_dims + det_dims + action_dims, hidden_dims), nn.LayerNorm(hidden_dims), 
+            nn.Linear(latent_dims, hidden_dims), nn.LayerNorm(hidden_dims),
             nn.Tanh(), nn.Linear(hidden_dims, hidden_dims),
             nn.ELU(), nn.Linear(hidden_dims, 2))
         self.apply(weight_init)
 
-    def forward(self, z, h, a, z_next):
-        x = torch.cat([z, h, a, z_next], -1)
+    def forward(self, z, h):
+        x = torch.cat([z, h], -1)
         logits = self.classifier(x)
         return logits
     
-    def get_reward(self, z, h, a, z_next):
-        x = torch.cat([z, h, a, z_next], -1)
+    def get_reward(self, z, h):
+        x = torch.cat([z, h], -1)
         logits = self.classifier(x)
         reward = torch.sub(logits[..., 1], logits[..., 0])
         return reward.unsqueeze(-1)

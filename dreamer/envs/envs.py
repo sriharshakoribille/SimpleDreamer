@@ -42,7 +42,7 @@ def make_atari_env(task_name, skip_frame, width, height, seed, pixel_norm=True):
     env.seed(seed)
     return env
 
-def make_gym_env(task_name, frame_skip, from_pixels, height, width):
+def make_gym_env(task_name, frame_skip, from_pixels, height, width, seed):
     env = gym.make(task_name, render_mode='rgb_array')
     if frame_skip > 1:
         env = SkipFrame(env, frame_skip)
@@ -54,6 +54,7 @@ def make_gym_env(task_name, frame_skip, from_pixels, height, width):
         env = PixelNormalization(env)
         #Timelimit can also be added here
     env = gym.wrappers.TimeLimit(env, max_episode_steps=500)
+    env.reset(seed=seed)
     return env
 
 def get_env_infos(env):
